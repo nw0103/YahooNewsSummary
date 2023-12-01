@@ -3,11 +3,12 @@ import streamlit as st
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-from transformers import T5Tokenizer, T5ForConditionalGeneration
+import torch
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 from datetime import datetime
 
-tokenizer = T5Tokenizer.from_pretrained("Zolyer/ja-t5-base-summary")  
-model = T5ForConditionalGeneration.from_pretrained("Zolyer/ja-t5-base-summary")
+model = AutoModelForSeq2SeqLM.from_pretrained('Zolyer/ja-t5-base-summary')    
+tokenizer = AutoTokenizer.from_pretrained('Zolyer/ja-t5-base-summary', use_fast=False) 
 
 url = "https://news.yahoo.co.jp"
 
@@ -39,10 +40,12 @@ for element in target_elements:
     target_url_content_element = url_soup.find(class_="article_body highLightSearchTarget")
     target_url_content_text = target_url_content_element.get_text()
 
+    # 推論
     inputs = tokenizer.encode("要約: " + target_url_content_text, return_tensors="pt")  
-    outputs = model.generate(inputs)
-    summary = tokenizer.decode(outputs[0], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-
+    model.eval()
+    with torch.no_grad():
+        outputs = model.generate(inputs)
+        summary = tokenizer.decode(outputs[0], skip_special_tokens=True, clean_up_tokenization_spaces=False)
 
     news = {
         'title': element.text,

@@ -3,58 +3,41 @@ import streamlit as st
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-import torch
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 from datetime import datetime
+from transformers import pipeline
 
-model = AutoModelForSeq2SeqLM.from_pretrained('Zolyer/ja-t5-base-summary')    
-tokenizer = AutoTokenizer.from_pretrained('Zolyer/ja-t5-base-summary', use_fast=False) 
+url = "https://news.yahoo.co.jp/topics/top-picks"
 
-url = "https://news.yahoo.co.jp"
+res = requests.get(url)
+soup = BeautifulSoup(res.text, 'html.parser')
 
+target_elements = soup.find_all("a", class_="newsFeed_item_link")
 news_list = []
-
-# APIからニュースデータを取得
-response = requests.get(url)
-data = response.text
-
-# BeautifulSoupを使ってHTMLを解析
-soup = BeautifulSoup(data, "html.parser")
-
-
-# sc-aiIEM gCShmHの部分を取り出す
-target_element = soup.find(class_="sc-aiIEM gCShmH")
-target_text = target_element.text
-target_elements = soup.find_all(class_="sc-dtLLSn dpehyt")
-target_texts = [element.text for element in target_elements]
-
 for element in target_elements:
-    # ニュースの本文を得られたURLから取得
-    response = requests.get(element['href'])
-    data = response.text
-    soup = BeautifulSoup(data, "html.parser")
-    read_all_url = soup.find(class_="sc-jWuRkY kZUDoE").get('href')
-    url_response = requests.get(read_all_url)
-    url_data = url_response.text
-    url_soup = BeautifulSoup(url_data, "html.parser")
-    target_url_content_element = url_soup.find(class_="article_body highLightSearchTarget")
-    target_url_content_text = target_url_content_element.get_text()
+  #本文の取得
+  response = requests.get(element['href'])
+  data = response.text
+  soup = BeautifulSoup(data, "html.parser")
+  content_links = soup.select('#uamods-pickup > div:nth-of-type(2) > div > p > a') #記事全文を読む
+  content_response = requests.get(content_links[0]["href"])
+  content_data = content_response.text
+  content_soup = BeautifulSoup(content_data, "html.parser")
+  content_element = content_soup.find(class_="article_body highLightSearchTarget")
+  content_text = content_element.get_text()
 
-    # 推論
-    inputs = tokenizer.encode("要約: " + target_url_content_text, return_tensors="pt")  
-    model.eval()
-    with torch.no_grad():
-        outputs = model.generate(inputs)
-        summary = tokenizer.decode(outputs[0], skip_special_tokens=True, clean_up_tokenization_spaces=False)
+  text2text_pipeline = pipeline(
+      model="Zolyer/ja-t5-base-summaryA"
+  ) 
 
-    news = {
-        'title': element.text,
-        'url': element['href'],
-        'content': target_url_content_text,
-        'summary': summary
+  news = {
+      'title': element.find(class_="newsFeed_item_title").text,
+      'url': element['href'],
+      'content': content_text,
+      'summary': text2text_pipeline(content_text)[0]["generated_text"]
 
-    }
-    news_list.append(news)
+  }
+  news_list.append(news)
 
 
 #WEBページに表示する内容を記載

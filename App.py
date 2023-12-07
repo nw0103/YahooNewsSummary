@@ -3,7 +3,6 @@ import streamlit as st
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 from datetime import datetime
 from transformers import pipeline
 

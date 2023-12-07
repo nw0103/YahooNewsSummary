@@ -27,7 +27,7 @@ for element in target_elements:
   content_text = content_element.get_text()
 
   text2text_pipeline = pipeline(
-      model="Zolyer/ja-t5-base-summaryA"
+      model="Zolyer/ja-t5-base-summary"
   ) 
 
   news = {
